@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 프로젝트 산출물 (로컬/팀원마다 생성되는 파일 — 커밋 대상 아님)
+data/faq_embeddings.npy
+data/logs.csv
+heatmap_output.png
