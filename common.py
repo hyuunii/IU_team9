@@ -670,6 +670,35 @@ def inject_css():
             padding-top: 0;
         }
 
+        /* 내 주변 */
+        .injoy-nearby-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:20px 4px 14px; }
+        .injoy-nearby-title { font-size:22px; font-weight:800; color:#2A1B11; line-height:1.25; }
+        .injoy-nearby-sub { margin-top:5px; font-size:13px; color:#76695D; }
+        .injoy-sample-badge { display:inline-flex; flex-shrink:0; padding:5px 10px; border-radius:999px; background:#F4F1EB; border:1px dashed #DDD5CA; color:#76695D; font-size:10.5px; font-weight:700; }
+        .injoy-prototype-map { position:relative; height:174px; overflow:hidden; border-radius:29px; margin-bottom:12px; background-color:#F6EDE0; background-image:linear-gradient(#E8DED1 1px,transparent 1px),linear-gradient(90deg,#E8DED1 1px,transparent 1px); background-size:40px 40px; }
+        .injoy-map-pin { position:absolute; width:34px; height:34px; display:grid; place-items:center; border-radius:50%; background:#008F91; color:#FFF; font-size:22px; font-family:Arial,sans-serif; line-height:1; box-shadow:0 3px 8px rgba(0,100,103,.12); }
+        .injoy-map-pin.pin-1 { left:12%; top:25%; } .injoy-map-pin.pin-2 { left:28%; top:48%; }
+        .injoy-map-pin.pin-3 { left:55%; top:25%; } .injoy-map-pin.pin-4 { left:69%; top:48%; }
+        .injoy-map-pin.pin-5 { left:82%; top:70%; }
+        .injoy-map-label { position:absolute; right:13px; bottom:8px; color:#76695D; font-size:10.5px; font-weight:800; }
+        .st-key-nearby_filters.st-key-nearby_filters[data-testid="stHorizontalBlock"] { display:flex !important; flex-wrap:nowrap !important; gap:8px !important; overflow-x:auto !important; padding:4px 0 14px !important; }
+        .st-key-nearby_filters [data-testid="stElementContainer"], .st-key-nearby_filters [data-testid="stColumn"] { flex:0 0 auto !important; width:auto !important; }
+        .st-key-nearby_filters button { width:auto !important; min-height:auto !important; padding:8px 16px !important; border-radius:999px !important; border:1px solid #E3DDD3 !important; background:#FFF !important; color:#4E270D !important; white-space:nowrap !important; font-size:12.5px !important; box-shadow:none !important; }
+        .st-key-nearby_filters button[data-testid="stBaseButton-primary"] { background:#008F91 !important; border-color:#008F91 !important; color:#FFF !important; }
+        .injoy-place-card { background:#FFF; border-radius:25.6px 25.6px 0 0; box-shadow:0 8px 24px -12px rgba(92,65,44,.25); padding:15px 16px 7px; margin-top:2px; }
+        .injoy-place-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+        .injoy-place-name { color:#2A1B11; font-size:14px; font-weight:800; line-height:1.35; }
+        .injoy-place-meta { color:#76695D; font-size:11px; font-weight:600; line-height:1.4; margin-top:2px; }
+        .injoy-place-desc { color:#3C2B20; font-size:12.5px; line-height:1.5; margin-top:9px; }
+        .injoy-place-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+        .injoy-place-lang, .injoy-place-audience { display:inline-flex; border-radius:999px; padding:3px 8px; background:#F6EDE0; color:#4E3B2E; font-size:9.5px; font-weight:800; }
+        .injoy-place-audience { background:#D5F4E2; color:#0B764D; }
+        [data-testid="stHorizontalBlock"][class*="st-key-nearby_actions_"] { background:#FFF; border-radius:0 0 25.6px 25.6px; box-shadow:0 14px 24px -18px rgba(92,65,44,.35); padding:4px 16px 14px; margin-bottom:10px; justify-content:flex-start; gap:8px !important; }
+        [class*="st-key-nearby_actions_"] [data-testid="stColumn"], [class*="st-key-nearby_actions_"] [data-testid="stElementContainer"] { flex:0 0 auto !important; width:auto !important; }
+        [class*="st-key-nearby_actions_"] button, [class*="st-key-nearby_actions_"] a { width:auto !important; min-height:auto !important; border-radius:999px !important; padding:8px 13px !important; font-size:11.5px !important; font-weight:700 !important; white-space:nowrap !important; }
+        [class*="st-key-nearby_actions_"] a { background:#008F91 !important; border-color:#008F91 !important; color:#FFF !important; }
+        .injoy-nearby-footer { color:#76695D; font-size:10px; padding:10px 4px 2px; }
+
         /* 일반 버튼(뒤로가기 등) 스타일 */
         div[data-testid="stButton"] button {
             border-radius: 12px;
