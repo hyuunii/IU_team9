@@ -47,7 +47,6 @@ export default function OnboardingPage() {
   const [phone, setPhone] = useState("");
   const [hasAccount, setHasAccount] = useState("no");
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState<Profile | null>(null);
   const [started,setStarted]=useState(false);
 
   useEffect(() => {
@@ -79,22 +78,8 @@ export default function OnboardingPage() {
       purpose, phone: phone.trim(), hasAccount: hasAccount === "yes",
     };
     localStorage.setItem("injoy-profile", JSON.stringify(profile));
-    setSaved(profile);
     setError("");
-  }
-
-  if (saved) {
-    return (
-      <main className="shell success-shell">
-        <section className="success-card">
-          <div className="success-icon">✓</div>
-          <p className="eyebrow">{t.ready}</p>
-          <h1>{t.success.replace("{name}",saved.nickname)}</h1>
-          <p>{t.regions[regions.indexOf(saved.region)]||saved.region} · {t.stay} {t.durations[durations.indexOf(saved.duration)]||saved.duration}</p>
-          <button className="primary-button" onClick={() => { location.href="/home" }}>{t.home}</button>
-        </section>
-      </main>
-    );
+    location.href="/home";
   }
 
   if(!started)return <main className="welcome-shell"><section className="welcome-card"><header><span className="brand"><i>INJOY</i><b>INCHEON</b></span><label className="language-select"><select aria-label={t.languageLabel} value={language} onChange={event=>changeLanguage(event.target.value as LocaleCode)}>{languages.map(item=><option value={item.code} key={item.code}>{item.flag} {item.name}</option>)}</select></label></header><div className="welcome-visual"><div className="map-scene" aria-hidden="true"><span/><span/><span/><i/><i/><i/></div><img src="/characters/smile-cutout-v2.png" alt="INJOY 인천 생활 도우미 캐릭터"/></div><p className="eyebrow">YOUR INCHEON LIFE COMPANION</p><h1>{t.heroTop}<br/><span>{t.heroAccent}</span></h1><p className="welcome-copy">{t.heroBody}</p><button className="primary-button" onClick={()=>setStarted(true)}>{t.submit} <span>→</span></button><small>{t.privacy}</small></section></main>;
