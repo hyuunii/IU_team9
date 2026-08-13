@@ -6,6 +6,7 @@ import json
 import os
 import re
 from datetime import datetime
+from html import escape
 
 import pandas as pd
 import streamlit as st
@@ -369,7 +370,7 @@ def inject_css():
             backdrop-filter: blur(8px);
             border-top: 1px solid #E3DDD3;
             padding: 8px 16px 10px;
-            z-index: 40;
+            z-index: 1000;
         }
         .st-key-bottom_nav[data-testid="stHorizontalBlock"] {
             gap: 0 !important;
@@ -401,10 +402,247 @@ def inject_css():
         .st-key-bottom_nav button[data-testid="stBaseButton-primary"] {
             color: #008282 !important;
         }
-        /* 챗봇 탭에서 Streamlit 기본 채팅 입력창이 하단 네비게이션에 가리지 않도록 살짝 띄움 */
-        [data-testid="stChatInput"] {
-            bottom: 66px !important;
-            max-width: 520px !important;
+        .injoy-chat-header {
+            margin-bottom: 14px;
+        }
+        .injoy-chat-header-title {
+            color: #2A1B11;
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.25;
+        }
+        .injoy-chat-header-sub {
+            color: #76695D;
+            font-size: 13px;
+            line-height: 1.45;
+            margin-top: 4px;
+        }
+        .injoy-chat-bottom-space {
+            height: 142px;
+        }
+        .injoy-chat-user-row {
+            display: flex;
+            justify-content: flex-end;
+            margin: 0 0 12px;
+        }
+        .injoy-chat-user-bubble {
+            max-width: 85%;
+            border-radius: 24px 24px 8px 24px;
+            background: #6BA9E6;
+            color: #FFFFFF;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.5;
+            padding: 10px 16px;
+            box-shadow: 0 12px 26px -16px rgba(63,130,199,0.9);
+        }
+        .injoy-chat-assistant-card {
+            background: #FFFFFF;
+            border-radius: 25.6px;
+            box-shadow: 0 8px 24px -12px rgba(92,65,44,0.25);
+            padding: 16px;
+            margin: 0 0 14px;
+            color: #2A1B11;
+        }
+        .injoy-chat-answer-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #6BA9E6;
+            background: rgba(107,169,230,0.14);
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 5px 10px;
+            margin-bottom: 10px;
+        }
+        .injoy-chat-answer-text {
+            font-size: 14px;
+            line-height: 1.65;
+            color: #2A1B11;
+        }
+        .injoy-chat-hero {
+            background: linear-gradient(160deg, #6BA9E6 0%, #4D8FD1 100%);
+            border-radius: 25.6px;
+            box-shadow: 0 18px 40px -20px rgba(63,130,199,0.58);
+            color: #FFFFFF;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .injoy-chat-hero-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.2);
+            display: grid;
+            place-items: center;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .injoy-chat-kicker {
+            color: rgba(255,255,255,0.84);
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0;
+            margin-bottom: 6px;
+        }
+        .injoy-chat-title {
+            color: #FFFFFF;
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1.35;
+            margin-bottom: 8px;
+        }
+        .injoy-chat-sub {
+            color: rgba(255,255,255,0.9);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .injoy-chat-section {
+            color: #76695D;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0;
+            margin: 10px 0 8px;
+        }
+        .st-key-chat_suggestions [data-testid="stVerticalBlock"] {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .st-key-chat_suggestions [data-testid="stElementContainer"],
+        .st-key-chat_suggestions div[data-testid="stButton"] {
+            width: auto !important;
+            flex: 0 1 auto;
+        }
+        .st-key-chat_suggestions button {
+            width: auto !important;
+            min-height: auto !important;
+            background: #FFFFFF !important;
+            border: 1px solid #E3DDD3 !important;
+            border-radius: 999px !important;
+            box-shadow: none !important;
+            color: #2A1B11 !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            line-height: 1.25 !important;
+            white-space: normal;
+            padding: 8px 12px !important;
+            margin: 0 !important;
+        }
+        .st-key-chat_suggestions button:hover {
+            border-color: #6BA9E6 !important;
+            color: #397FC4 !important;
+            background: rgba(107,169,230,0.09) !important;
+        }
+        .st-key-chat_composer {
+            position: fixed;
+            bottom: 76px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 520px;
+            padding: 12px 16px 10px;
+            background: rgba(255,255,255,0.96);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid #E3DDD3;
+            z-index: 900;
+        }
+        .st-key-chat_composer [data-testid="stHorizontalBlock"] {
+            gap: 8px !important;
+            align-items: center;
+        }
+        .st-key-chat_composer [data-testid="stColumn"]:first-child {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .st-key-chat_composer [data-testid="stColumn"]:last-child {
+            flex: 0 0 48px;
+            width: 48px;
+        }
+        .st-key-chat_draft {
+            position: relative;
+        }
+        .st-key-chat_draft::before {
+            content: "+";
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-49%);
+            z-index: 2;
+            color: #1F2937;
+            font-size: 26px;
+            font-weight: 300;
+            pointer-events: none;
+        }
+        .st-key-chat_draft::after {
+            content: "🎙";
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 2;
+            color: #1F2937;
+            font-size: 17px;
+            pointer-events: none;
+        }
+        .st-key-chat_draft [data-testid="stTextInput"] label {
+            display: none;
+        }
+        .st-key-chat_draft div[data-baseweb="input"] {
+            min-height: 48px;
+            background: #FFFFFF !important;
+            border: 1px solid #E2EAF4 !important;
+            border-radius: 18px !important;
+            box-shadow:
+                0 18px 42px -26px rgba(41,88,135,0.48),
+                0 10px 22px -18px rgba(107,169,230,0.5);
+            transition: border-color 160ms ease, box-shadow 160ms ease;
+        }
+        .st-key-chat_draft div[data-baseweb="input"]:focus-within {
+            border-color: #6BA9E6 !important;
+            box-shadow:
+                0 22px 52px -28px rgba(41,88,135,0.58),
+                0 0 0 3px rgba(107,169,230,0.16);
+        }
+        .st-key-chat_draft input {
+            color: #111827 !important;
+            font-size: 15px !important;
+            padding-left: 44px !important;
+            padding-right: 38px !important;
+            caret-color: #6BA9E6;
+            border: 0 !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+        .st-key-chat_draft input::placeholder {
+            color: #8A95A3 !important;
+        }
+        .st-key-chat_send button {
+            width: 48px !important;
+            height: 48px !important;
+            min-width: 48px !important;
+            min-height: 48px !important;
+            border-radius: 18px !important;
+            background: #6BA9E6 !important;
+            border: none !important;
+            color: #FFFFFF !important;
+            font-size: 22px !important;
+            font-weight: 800 !important;
+            line-height: 1 !important;
+            box-shadow: 0 14px 28px -16px rgba(63,130,199,0.95) !important;
+            padding: 0 !important;
+        }
+        .st-key-chat_send button:hover {
+            background: #5B99D8 !important;
+            transform: translateY(-1px);
+        }
+        .injoy-chat-verify {
+            color: #76695D;
+            font-size: 10px;
+            line-height: 1.3;
+            padding-top: 6px;
         }
 
         /* 일반 버튼(뒤로가기 등) 스타일 */
@@ -968,29 +1206,144 @@ def render_guide():
     if shown == 0:
         st.caption("아직 등록된 정보가 없어요.")
 
+def build_chat_suggestions() -> list[str]:
+    suggestions = []
+    if profile.get("has_arc"):
+        suggestions.append("외국인등록증 주소 변경은 어떻게 하나요?")
+    else:
+        suggestions.append("외국인등록증은 언제까지 신청해야 하나요?")
+    if profile.get("has_korean_phone"):
+        suggestions.append("한국 휴대폰 번호로 본인인증이 안 될 때는 어떻게 해야 하나요?")
+    else:
+        suggestions.append("외국인도 선불 유심을 바로 살 수 있나요?")
+    if profile.get("has_korean_account"):
+        suggestions.append("외국인이 계좌를 유지할 때 조심해야 할 점이 있나요?")
+    else:
+        suggestions.append("외국인이 은행 계좌를 만들 때 필요한 서류는 뭐예요?")
+    suggestions.extend(
+        [
+            f"{profile['region']}에서 외국인 민원 상담은 어디로 가면 돼요?",
+            "입국 후 첫 한 달에 꼭 해야 할 일은 뭐예요?",
+        ]
+    )
+    return suggestions[:5]
+
+
+def format_chat_text(text: str) -> str:
+    return escape(text).replace("\n", "<br>")
+
+
+def queue_chat_prompt(prompt: str | None = None):
+    draft = (prompt if prompt is not None else st.session_state.get("chat_draft", "")).strip()
+    if not draft:
+        return
+    st.session_state.chat_prompt_to_send = draft
+    st.session_state.chat_draft = ""
+
+
+def render_chat_message(msg: dict):
+    content = format_chat_text(msg["content"])
+    if msg["role"] == "user":
+        st.markdown(
+            f'<div class="injoy-chat-user-row"><div class="injoy-chat-user-bubble">{content}</div></div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"""
+            <div class="injoy-chat-assistant-card">
+                <div class="injoy-chat-answer-label">✦ AI 답변</div>
+                <div class="injoy-chat-answer-text">{content}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def render_chat_composer():
+    with st.container(key="chat_composer"):
+        input_col, send_col = st.columns([1, 0.13], gap="small")
+        with input_col:
+            st.text_input(
+                "질문 입력",
+                key="chat_draft",
+                label_visibility="collapsed",
+                placeholder="무엇이든 물어보세요...",
+                on_change=queue_chat_prompt,
+            )
+        with send_col:
+            st.button("↑", key="chat_send", on_click=queue_chat_prompt)
+        st.markdown(
+            '<div class="injoy-chat-verify">중요한 행정·의료 정보는 공식 기관에서 한 번 더 확인해 주세요.</div>',
+            unsafe_allow_html=True,
+        )
+
 
 def render_chat():
-    st.caption(f"궁금한 걸 자유롭게 물어보세요 ({profile.get('language', '다국어 지원')})")
-
+    # 생활가이드 상세페이지의 "AI에게 질문" 버튼에서 넘어온 경우, 질문 예시를 안내
     prefill_topic = st.session_state.pop("chat_prefill_topic", None)
     if prefill_topic:
         st.info(f"💡 이렇게 물어보면 돼요: \"{prefill_topic}에 대해 더 자세히 알려줘\"")
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
+    st.session_state.setdefault("chat_draft", "")
+
+    pending_prompt = st.session_state.get("chat_prompt_to_send")
+    if pending_prompt is not None:
+        del st.session_state["chat_prompt_to_send"]
+        st.session_state.messages.append({"role": "user", "content": pending_prompt})
+    else:
+        pending_prompt = None
+
+    st.markdown(
+        f"""
+        <div class="injoy-chat-header">
+            <div class="injoy-chat-header-title">AI에게 질문</div>
+            <div class="injoy-chat-header-sub">답변과 함께 몰라서 못 물어본 생활 정보까지 챙겨드릴게요.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if not st.session_state.messages:
+        st.markdown(
+            f"""
+            <div class="injoy-chat-hero">
+                <div class="injoy-chat-hero-icon">✦</div>
+                <div class="injoy-chat-kicker">Life Navigator</div>
+                <div class="injoy-chat-title">{profile['nickname']}님, 한국 생활에서 막히는 걸 편하게 물어보세요</div>
+                <div class="injoy-chat-sub">
+                    {profile.get('language', '선택한 언어')}로 답변하고, 행정·의료·은행·통신처럼
+                    처음엔 놓치기 쉬운 정보도 함께 안내해요.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     for msg in st.session_state.messages:
-        st.chat_message(msg["role"]).write(msg["content"])
+        render_chat_message(msg)
 
-    if prompt := st.chat_input("예: 외국인등록은 어떻게 하나요?"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        st.chat_message("user").write(prompt)
+    if pending_prompt:
+        with st.spinner("생각 중..."):
+            answer = generate_answer(pending_prompt)
+        answer_msg = {"role": "assistant", "content": answer}
+        st.session_state.messages.append(answer_msg)
+        render_chat_message(answer_msg)
 
-        with st.spinner("답변 준비 중..."):
-            answer = generate_answer(prompt)
+    st.markdown('<div class="injoy-chat-section">추천 질문</div>', unsafe_allow_html=True)
+    with st.container(key="chat_suggestions"):
+        for i, question in enumerate(build_chat_suggestions()):
+            st.button(
+                question,
+                key=f"chat_suggestion_{i}",
+                on_click=queue_chat_prompt,
+                args=(question,),
+            )
+    st.markdown('<div class="injoy-chat-bottom-space"></div>', unsafe_allow_html=True)
 
-        st.session_state.messages.append({"role": "assistant", "content": answer})
-        st.chat_message("assistant").write(answer)
+    render_chat_composer()
 
 
 def render_nearby():
