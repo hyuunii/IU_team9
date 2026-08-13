@@ -7,7 +7,7 @@ import streamlit as st
 
 import common
 
-profile = st.session_state.profile
+profile = common.require_profile()
 
 
 def render_detail(item: dict):

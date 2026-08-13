@@ -8,8 +8,10 @@ import json
 import numpy as np
 from openai import OpenAI
 from dotenv import load_dotenv
+from utils.openai_env import normalize_openai_env
 
-load_dotenv()
+load_dotenv(override=True)
+normalize_openai_env()
 client = OpenAI()
 
 EMBED_MODEL = "text-embedding-3-small"

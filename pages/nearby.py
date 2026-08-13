@@ -10,7 +10,8 @@ from streamlit_folium import st_folium
 
 import common
 
-profile = st.session_state.profile
+
+profile = common.require_profile()
 CATEGORIES = ["전체", "외국인 지원", "노동 상담", "의료", "한국어", "행정 서비스", "교통"]
 INCHEON_CENTER = (37.4563, 126.7052)
 

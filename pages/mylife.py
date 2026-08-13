@@ -5,7 +5,7 @@ import streamlit as st
 
 import common
 
-profile = st.session_state.profile
+profile = common.require_profile()
 
 CHECKLISTS = {
     "1개월 미만": [
