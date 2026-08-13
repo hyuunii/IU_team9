@@ -4,6 +4,7 @@
 """
 import json
 import os
+import re
 from datetime import datetime
 from html import escape
 
@@ -67,11 +68,13 @@ CATEGORY_GRID = [
     {"id": "emergency", "icon": "🚨", "label": "긴급상황", "categories": []},
 ]
 
-# 홈 "당신을 위한 추천" — 정적 큐레이션 (추후 프로필 기반 개인화로 고도화 예정)
+# 홈 "당신을 위한 추천" / 생활가이드 목록에 공통으로 쓰는 "생활 팁" 큐레이션.
+# 마지막 값은 CATEGORY_GRID의 id — 생활가이드 탭 필터 칩과 연결하기 위함.
+# (추후 프로필 기반 개인화로 고도화 예정)
 HOME_TIPS = [
-    ("🚌", "터미널 가기 전에 미리 예매하기", "시외·고속버스는 '고속버스티머니', '버스타고' 앱으로 미리 예매할 수 있어요."),
-    ("📶", "유심은 공항·편의점에서도 구매 가능", "외국인등록증 발급 전이라면 선불폰·알뜰폰 유심으로 임시 이용할 수 있어요."),
-    ("🏥", "다국어 통역이 필요하면 1577-1366", "다누리콜센터가 병원·약국 통역을 무료로 연결해줘요 (13개 언어 지원)."),
+    ("🚌", "터미널 가기 전에 미리 예매하기", "시외·고속버스는 '고속버스티머니', '버스타고' 앱으로 미리 예매할 수 있어요.", "transport"),
+    ("📶", "유심은 공항·편의점에서도 구매 가능", "외국인등록증 발급 전이라면 선불폰·알뜰폰 유심으로 임시 이용할 수 있어요.", "telecom"),
+    ("🏥", "다국어 통역이 필요하면 1577-1366", "다누리콜센터가 병원·약국 통역을 무료로 연결해줘요 (13개 언어 지원).", "medical"),
 ]
 
 EMERGENCY_INFO = [
@@ -174,6 +177,180 @@ def inject_css():
             padding: 4px 10px; border-radius: 999px;
         }
         .injoy-tip-chevron { color: #C9BFB2; font-size: 20px; }
+        /* "공식 정보" 배지 — 생활 팁(mint)과 구분되는 primary 톤 변형 */
+        .injoy-tip-badge.injoy-badge-official { background: #E3F5F5; color: #007A7A; }
+
+        /* 생활가이드 탭 헤더 — Lovable 원본(px-5 pt-6 pb-3) */
+        .injoy-guide-header { padding: 20px 0 4px; margin: 0 -16px; padding-left: 20px; padding-right: 20px; }
+        .injoy-guide-title { font-size: 20px; font-weight: 800; color: #2A1B11; }
+        .injoy-guide-sub { font-size: 12.5px; color: #76695D; margin-top: 4px; }
+
+        /* 생활가이드 필터 칩 — 가로 스크롤 pill 버튼 행. .st-key-guide_filters로 스코핑해서
+           카테고리 그리드(tertiary 버튼)나 다른 버튼 스타일과 절대 안 겹치게 함.
+           주의: Streamlit은 st-key-<key> 클래스와 data-testid="stHorizontalBlock"을
+           "같은" 엘리먼트에 같이 붙인다 (자식이 아님!). 그래서 셀렉터에 공백을 넣으면
+           (자손 선택자) 절대 매칭이 안 된다 — 이게 스크롤이 안 먹혔던 진짜 원인.
+           .st-key-X[data-testid=...] 처럼 공백 없이 같은 엘리먼트로 셀렉팅해야 함. */
+        .st-key-guide_filters.st-key-guide_filters[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            gap: 8px !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            padding: 6px 2px 10px !important;
+            -webkit-overflow-scrolling: touch;
+        }
+        .st-key-guide_filters.st-key-guide_filters [data-testid="stElementContainer"],
+        .st-key-guide_filters.st-key-guide_filters [data-testid="stColumn"] {
+            flex: 0 0 auto !important;
+            width: auto !important;
+            min-width: 0 !important;
+            display: inline-block !important;
+        }
+        .st-key-guide_filters.st-key-guide_filters button {
+            border-radius: 999px !important;
+            border: 1px solid #E3DDD3 !important;
+            background: #FFFFFF !important;
+            color: #4E270D !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            padding: 8px 16px !important;
+            white-space: nowrap !important;
+            box-shadow: none !important;
+            min-height: auto !important;
+            width: auto !important;
+        }
+        .st-key-guide_filters.st-key-guide_filters button[data-testid="stBaseButton-primary"] {
+            background: #008282 !important;
+            border-color: #008282 !important;
+            color: #FFFFFF !important;
+        }
+
+        /* 생활가이드 목록의 개별 카드 — 실제 클릭 가능한 st.button으로 구현.
+           카드마다 key가 달라서(guidecard_0, guidecard_1 ...) 공통 클래스가 없기 때문에,
+           class 속성에 "st-key-guidecard_"가 "포함"되는지로 스코핑한다
+           ([class*=...]는 부분 문자열 매칭이라 접두어가 같은 모든 카드에 한 번에 적용됨). */
+        [data-testid="stElementContainer"][class*="st-key-guidecard_"] button {
+            background: #FFFFFF !important;
+            border: none !important;
+            border-radius: 29.6px !important;
+            box-shadow: 0 8px 24px -12px rgba(92,65,44,0.25) !important;
+            padding: 16px 40px 16px 16px !important;
+            text-align: left !important;
+            white-space: pre-line !important;
+            min-height: auto !important;
+            width: 100% !important;
+            position: relative !important;
+            color: #2A1B11 !important;
+            font-size: 12.5px !important;
+            font-weight: 500 !important;
+            line-height: 1.5 !important;
+        }
+        [data-testid="stElementContainer"][class*="st-key-guidecard_"] {
+            margin-bottom: 10px !important;
+        }
+        [data-testid="stElementContainer"][class*="st-key-guidecard_"] button::first-line {
+            font-size: 15px !important;
+            font-weight: 800 !important;
+        }
+        [data-testid="stElementContainer"][class*="st-key-guidecard_"] button::after {
+            content: '›';
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #C9BFB2;
+            font-size: 20px;
+        }
+        [data-testid="stElementContainer"][class*="st-key-guidecard_"] button:hover {
+            box-shadow: 0 10px 28px -10px rgba(92,65,44,0.35) !important;
+        }
+
+        /* 생활가이드 상세 페이지 */
+        .injoy-detail-icon-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 14px; }
+        .injoy-detail-icon { font-size: 40px; line-height: 1; }
+        .injoy-detail-title { font-size: 23px; font-weight: 800; color: #2A1B11; margin-bottom: 8px; line-height: 1.35; }
+        .injoy-detail-sub { font-size: 13.5px; color: #76695D; margin-bottom: 18px; line-height: 1.55; }
+
+        .injoy-detail-card {
+            background: #FFFFFF;
+            border-radius: 29.6px;
+            box-shadow: 0 8px 24px -12px rgba(92,65,44,0.25);
+            padding: 20px;
+            margin-bottom: 14px;
+        }
+        .injoy-detail-card-title { font-size: 15px; font-weight: 800; color: #2A1B11; margin-bottom: 12px; }
+        .injoy-detail-card-body { font-size: 13px; color: #4E3B2E; line-height: 1.6; }
+
+        .injoy-step-row { display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-start; }
+        .injoy-step-row:last-child { margin-bottom: 0; }
+        .injoy-step-num {
+            flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+            background: #E3F5F5; color: #007A7A; font-weight: 800; font-size: 12.5px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .injoy-step-text { font-size: 13px; color: #4E3B2E; line-height: 1.6; padding-top: 2px; }
+
+        .injoy-service-card { background: #D5F4E2; border-radius: 20px; padding: 18px; margin-bottom: 14px; }
+        .injoy-service-title { font-size: 14px; font-weight: 800; color: #0B764D; margin-bottom: 6px; }
+        .injoy-service-body { font-size: 12.5px; color: #0B764D; line-height: 1.5; opacity: 0.9; }
+
+        .injoy-warning-card {
+            background: #FEE3C5; border-radius: 20px; padding: 16px 18px; margin-bottom: 20px;
+            display: flex; gap: 10px; align-items: flex-start;
+        }
+        .injoy-warning-title { font-size: 13.5px; font-weight: 800; color: #4E270D; margin-bottom: 4px; }
+        .injoy-warning-body { font-size: 12.5px; color: #4E270D; line-height: 1.5; opacity: 0.9; }
+
+        .injoy-related-title { font-size: 17px; font-weight: 800; color: #2A1B11; margin-bottom: 2px; }
+        .injoy-related-sub { font-size: 12px; color: #76695D; margin-bottom: 12px; }
+        .injoy-detail-footer { font-size: 11px; color: #B0A99C; margin: 18px 0 4px; line-height: 1.5; }
+
+        /* 상세 페이지 액션 버튼 행 (저장 / AI에게 질문 / 가까운 도움처) — 필터 칩과
+           같은 가로 스크롤 패턴, st.container(key="detail_actions")로 스코핑 */
+        .st-key-detail_actions.st-key-detail_actions[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            gap: 8px !important;
+            overflow-x: auto !important;
+            width: 100% !important;
+            padding: 4px 2px 20px !important;
+        }
+        .st-key-detail_actions [data-testid="stElementContainer"],
+        .st-key-detail_actions [data-testid="stColumn"] {
+            flex: 0 0 auto !important;
+        }
+        .st-key-detail_actions button {
+            border-radius: 999px !important;
+            border: 1px solid #E3DDD3 !important;
+            background: #FFFFFF !important;
+            color: #4E270D !important;
+            font-size: 12.5px !important;
+            font-weight: 700 !important;
+            padding: 8px 14px !important;
+            white-space: nowrap !important;
+            box-shadow: none !important;
+            min-height: auto !important;
+            width: auto !important;
+        }
+        .st-key-detail_actions button[data-testid="stBaseButton-primary"] {
+            background: #008282 !important;
+            border-color: #008282 !important;
+            color: #FFFFFF !important;
+        }
+
+        /* 뒤로가기(← 생활가이드) 버튼 — 화살표만 흐리게, 텍스트는 진하게 */
+        [data-testid="stElementContainer"][class*="st-key-guideback_"] button {
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 4px 0 !important;
+            color: #2A1B11 !important;
+            font-weight: 700 !important;
+            font-size: 14px !important;
+            min-height: auto !important;
+        }
 
         /* 하단 고정 네비게이션 — Lovable 원본(fixed bottom-0 left-1/2 w-full max-w-[520px]
            -translate-x-1/2 border-t bg-card/95 backdrop-blur)과 동일한 위치·크기.
@@ -195,7 +372,7 @@ def inject_css():
             padding: 8px 16px 10px;
             z-index: 1000;
         }
-        .st-key-bottom_nav [data-testid="stHorizontalBlock"] {
+        .st-key-bottom_nav[data-testid="stHorizontalBlock"] {
             gap: 0 !important;
         }
         .st-key-bottom_nav [data-testid="stColumn"],
@@ -203,27 +380,27 @@ def inject_css():
             flex: 1 1 0;
         }
         .st-key-bottom_nav button {
-            width: 100%;
+            width: 100% !important;
             background: none !important;
             border: none !important;
             box-shadow: none !important;
-            color: #76695D;
-            font-weight: 600;
-            font-size: 10px;
-            line-height: 1.3;
-            white-space: pre-line;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            color: #76695D !important;
+            font-weight: 600 !important;
+            font-size: 10px !important;
+            line-height: 1.3 !important;
+            white-space: pre-line !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
             padding: 4px 0 !important;
             min-height: auto !important;
         }
         .st-key-bottom_nav button::first-line {
-            font-size: 22px;
+            font-size: 22px !important;
         }
         .st-key-bottom_nav button[data-testid="stBaseButton-primary"] {
-            color: #008282;
+            color: #008282 !important;
         }
         .injoy-chat-header {
             margin-bottom: 14px;
@@ -638,7 +815,14 @@ def render_onboarding():
 
 
 if "profile" not in st.session_state:
-    render_onboarding()
+    # 온보딩도 독립된 엔드포인트(/onboarding)로 분리 — st.navigation을 쓰면
+    # Streamlit이 자동으로 URL 라우팅을 붙여준다. position="hidden"이라
+    # 기본 사이드바 네비 UI는 안 보이고, 온보딩 화면만 그대로 그려진다.
+    onboarding_nav = st.navigation(
+        [st.Page(render_onboarding, title="온보딩", url_path="onboarding", default=True)],
+        position="hidden",
+    )
+    onboarding_nav.run()
     st.stop()
 
 profile = st.session_state.profile
@@ -768,14 +952,20 @@ def render_category_detail(cat: dict, state_key: str = "selected_group"):
     st.info("원하는 답을 못 찾으셨나요? 하단의 **AI에게 질문** 탭에서 자유롭게 물어보세요!")
 
 
-def render_tip_card(icon: str, title: str, desc: str):
-    """'당신을 위한 추천' 카드 — Lovable 원본 구조(아이콘 버블 + 텍스트 + 생활팁 배지 + 화살표) 그대로."""
+def render_guide_card(icon: str, title: str, desc: str, badge: str = "tip"):
+    """'당신을 위한 추천' / 생활가이드 목록 카드 — Lovable 원본 구조
+    (아이콘 버블 + 텍스트 + 배지 + 화살표) 그대로. badge="tip"(생활 팁, mint) 또는
+    badge="official"(공식 정보, teal) 두 종류를 그대로 재현."""
+    if badge == "official":
+        badge_html = '<span class="injoy-tip-badge injoy-badge-official">✓ 공식 정보</span>'
+    else:
+        badge_html = '<span class="injoy-tip-badge">✦ 생활 팁</span>'
     st.markdown(
         f'<div class="injoy-tip-card">'
         f'<span class="injoy-tip-icon">{icon}</span>'
         f'<div><div class="injoy-tip-title">{title}</div>'
         f'<div class="injoy-tip-desc">{desc}</div>'
-        f'<span class="injoy-tip-badge">✦ 생활 팁</span></div>'
+        f'{badge_html}</div>'
         f'<span class="injoy-tip-chevron">›</span>'
         f'</div>',
         unsafe_allow_html=True,
@@ -808,37 +998,228 @@ def render_home():
 
         st.markdown('<div class="injoy-spacer"></div>', unsafe_allow_html=True)
         st.markdown('<div class="injoy-section-title">당신을 위한 추천</div>', unsafe_allow_html=True)
-        for icon, title, desc in HOME_TIPS:
-            render_tip_card(icon, title, desc)
+        for icon, title, desc, _cat_id in HOME_TIPS:
+            render_guide_card(icon, title, desc, badge="tip")
         st.caption("더 많은 정보는 **생활가이드** 탭에서 카테고리별로 볼 수 있어요.")
 
 
-def render_guide():
-    if "selected_group" in st.session_state:
-        selected = next(c for c in CATEGORY_GRID if c["id"] == st.session_state.selected_group)
-        render_category_detail(selected)
-    else:
-        render_category_grid()
+# 생활가이드 필터 칩 목록: "전체" + CATEGORY_GRID 각 카테고리
+GUIDE_FILTERS = [("all", "🗂️", "전체")] + [(c["id"], c["icon"], c["label"]) for c in CATEGORY_GRID]
 
+
+def build_guide_items() -> list[dict]:
+    """생활가이드 목록에 나오는 모든 항목(생활 팁 + FAQ 공식 정보)을 하나의 리스트로 합친다.
+    각 항목에 고유 id를 부여해서 카드 클릭 → 상세 페이지 라우팅에 쓴다."""
+    items = []
+    for idx, (icon, title, desc, cat_id) in enumerate(HOME_TIPS):
+        items.append({
+            "id": f"tip-{idx}", "icon": icon, "title": title, "desc": desc,
+            "badge": "tip", "cat_id": cat_id,
+        })
+    idx = 0
+    for cat in CATEGORY_GRID:
+        for item in faq_data:
+            if item["category"] in cat["categories"]:
+                items.append({
+                    "id": f"faq-{idx}", "icon": cat["icon"], "title": item["question"],
+                    "desc": item["answer"], "badge": "official", "cat_id": cat["id"],
+                })
+                idx += 1
+    return items
+
+
+GUIDE_ITEMS = build_guide_items()
+GUIDE_ITEMS_BY_ID = {it["id"]: it for it in GUIDE_ITEMS}
+
+
+def render_guide_item_card(item: dict) -> bool:
+    """생활가이드 목록의 클릭 가능한 카드. 실제 st.button이라 진짜로 클릭돼서 상세 페이지로 넘어간다."""
+    badge_icon = "✦" if item["badge"] == "tip" else "✓"
+    badge_label = "생활 팁" if item["badge"] == "tip" else "공식 정보"
+    label = f"{item['icon']} **{item['title']}**\n{badge_icon} {badge_label} · {item['desc']}"
+    return st.button(label, key=f"guidecard_{item['id']}", type="tertiary", width="stretch")
+
+
+def split_into_steps(text: str) -> list[str]:
+    """FAQ 답변 텍스트를 문장 단위로 쪼개서 번호가 매겨진 단계처럼 보여주기 위한 헬퍼.
+    새로운 내용을 지어내는 게 아니라 실제 답변 텍스트를 그대로 문장 단위로 재구성하는 것."""
+    parts = re.split(r"(?<=[.!?])\s+", text.strip())
+    parts = [p.strip() for p in parts if p.strip()]
+    return parts or [text.strip()]
+
+
+def render_guide_detail(item: dict):
+    """생활가이드 개별 항목 상세 페이지 — Lovable 원본 구성 그대로:
+    뒤로가기 → 아이콘+배지 → 제목/부제 → 액션 버튼 3개 → 왜 중요한가요 → 이렇게 하면 돼요
+    → (있으면) 도움이 되는 서비스 → 주의할 점 → 관련 정보 → 하단 안내 문구."""
+    if st.button("← 생활가이드", key=f"guideback_{item['id']}"):
+        del st.session_state["guide_detail_id"]
+        st.rerun()
+
+    badge_icon = "✦" if item["badge"] == "tip" else "✓"
+    badge_label = "생활 팁" if item["badge"] == "tip" else "공식 정보"
+    badge_class = "" if item["badge"] == "tip" else "injoy-badge-official"
+    st.markdown(
+        f'<div class="injoy-detail-icon-row">'
+        f'<span class="injoy-detail-icon">{item["icon"]}</span>'
+        f'<span class="injoy-tip-badge {badge_class}">{badge_icon} {badge_label}</span>'
+        f'</div>'
+        f'<div class="injoy-detail-title">{item["title"]}</div>'
+        f'<div class="injoy-detail-sub">{item["desc"][:60]}{"..." if len(item["desc"]) > 60 else ""}</div>',
+        unsafe_allow_html=True,
+    )
+
+    with st.container(key="detail_actions", horizontal=True, gap=None):
+        saved_ids = st.session_state.setdefault("saved_guide_ids", set())
+        is_saved = item["id"] in saved_ids
+        if st.button(
+            f"{'🔖' if is_saved else '📑'} {'저장됨' if is_saved else '저장'}",
+            key="detailaction_save",
+            type="primary" if is_saved else "secondary",
+        ):
+            if is_saved:
+                saved_ids.discard(item["id"])
+                st.toast("저장을 취소했어요.")
+            else:
+                saved_ids.add(item["id"])
+                st.toast("저장했어요! 마이라이프 탭에서 모아볼 수 있어요.", icon="🔖")
+            st.rerun()
+        if st.button("❓ AI에게 질문", key="detailaction_ask"):
+            st.session_state.chat_prefill_topic = item["title"]
+            st.switch_page(pages_by_id["chat"])
+        if st.button("📍 가까운 도움처", key="detailaction_nearby"):
+            st.switch_page(pages_by_id["nearby"])
+
+    # 왜 중요한가요 — 일반적인 맥락 설명 (구체적 사실을 지어내지 않고, 안내 성격의 문구)
+    why_text = (
+        "생활하면서 미리 알아두면 시간과 시행착오를 줄일 수 있는 정보예요."
+        if item["badge"] == "tip"
+        else "잘못 알고 있으면 시간과 비용을 낭비하거나 다시 절차를 밟아야 할 수 있어요."
+    )
+    st.markdown(
+        f'<div class="injoy-detail-card">'
+        f'<div class="injoy-detail-card-title">왜 중요한가요</div>'
+        f'<div class="injoy-detail-card-body">{why_text}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # 이렇게 하면 돼요 — 실제 FAQ/팁 답변 내용을 문장 단위로 재구성 (내용을 새로 지어내지 않음)
+    steps = split_into_steps(item["desc"])
+    steps_html = "".join(
+        f'<div class="injoy-step-row"><span class="injoy-step-num">{i}</span>'
+        f'<span class="injoy-step-text">{step}</span></div>'
+        for i, step in enumerate(steps, start=1)
+    )
+    st.markdown(
+        f'<div class="injoy-detail-card">'
+        f'<div class="injoy-detail-card-title">이렇게 하면 돼요</div>'
+        f'{steps_html}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # 도움이 되는 서비스 — 실제 부서 라우팅 데이터가 있을 때만 표시 (없는 서비스명 지어내지 않음)
+    dept_note = get_department_info(profile["region"], dept_data)
+    if dept_note and item["cat_id"] in ("admin", "medical", "job"):
+        st.markdown(
+            f'<div class="injoy-service-card">'
+            f'<div class="injoy-service-title">도움이 되는 서비스</div>'
+            f'<div class="injoy-service-body">📍 {dept_note}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    warn_text = (
+        "실제 상황에 따라 다를 수 있어요. 최신 정보는 직접 한 번 더 확인해 주세요."
+        if item["badge"] == "tip"
+        else "안내를 위한 요약이에요. 정확한 사항은 관련 기관 공식 채널에서 다시 확인해 주세요."
+    )
+    st.markdown(
+        f'<div class="injoy-warning-card">'
+        f'<span>⚠️</span>'
+        f'<div><div class="injoy-warning-title">주의할 점</div>'
+        f'<div class="injoy-warning-body">{warn_text}</div></div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    related = [g for g in GUIDE_ITEMS if g["cat_id"] == item["cat_id"] and g["id"] != item["id"]][:2]
+    if related:
+        st.markdown(
+            '<div class="injoy-related-title">관련 정보</div>'
+            '<div class="injoy-related-sub">이것도 알아두면 좋아요</div>',
+            unsafe_allow_html=True,
+        )
+        for rel in related:
+            if render_guide_item_card(rel):
+                st.session_state.guide_detail_id = rel["id"]
+                st.rerun()
+
+    st.markdown(
+        f'<div class="injoy-detail-footer">최신 정보는 반드시 공식 기관에서 확인해 주세요. '
+        f'({len(GUIDE_ITEMS)}개 항목 · 샘플 데이터)</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_guide():
+    """생활가이드 탭 — Lovable 원본처럼 상단 필터 칩(가로 스크롤) + 카드 리스트 구조.
+    카드를 클릭하면 상세 페이지(render_guide_detail)로 전환된다.
+    카테고리 3x3 미니 그리드(render_category_grid)는 홈 탭 전용으로 남겨두고,
+    이 탭은 완전히 새로운 '전체 목록 + 필터 + 상세' 화면으로 만든다."""
+    detail_id = st.session_state.get("guide_detail_id")
+    if detail_id and detail_id in GUIDE_ITEMS_BY_ID:
+        render_guide_detail(GUIDE_ITEMS_BY_ID[detail_id])
+        return
+
+    st.markdown(
+        '<div class="injoy-guide-header">'
+        '<div class="injoy-guide-title">생활가이드</div>'
+        '<div class="injoy-guide-sub">긴 문서가 아니라, 실행 가능한 단계로 정리했어요.</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.session_state.setdefault("guide_filter", "all")
+
+    with st.container(key="guide_filters", horizontal=True, gap=None):
+        for filter_id, filter_icon, filter_label in GUIDE_FILTERS:
+            is_active = st.session_state.guide_filter == filter_id
+            if st.button(
+                f"{filter_icon} {filter_label}",
+                key=f"guidefilter_{filter_id}",
+                type="primary" if is_active else "secondary",
+            ):
+                st.session_state.guide_filter = filter_id
+                st.rerun()
+
+    active_filter = st.session_state.guide_filter
+    shown = 0
+    for item in GUIDE_ITEMS:
+        if active_filter in ("all", item["cat_id"]):
+            if render_guide_item_card(item):
+                st.session_state.guide_detail_id = item["id"]
+                st.rerun()
+            shown += 1
+
+    if shown == 0:
+        st.caption("아직 등록된 정보가 없어요.")
 
 def build_chat_suggestions() -> list[str]:
     suggestions = []
-
     if profile.get("has_arc"):
         suggestions.append("외국인등록증 주소 변경은 어떻게 하나요?")
     else:
         suggestions.append("외국인등록증은 언제까지 신청해야 하나요?")
-
     if profile.get("has_korean_phone"):
         suggestions.append("한국 휴대폰 번호로 본인인증이 안 될 때는 어떻게 해야 하나요?")
     else:
         suggestions.append("외국인도 선불 유심을 바로 살 수 있나요?")
-
     if profile.get("has_korean_account"):
         suggestions.append("외국인이 계좌를 유지할 때 조심해야 할 점이 있나요?")
     else:
         suggestions.append("외국인이 은행 계좌를 만들 때 필요한 서류는 뭐예요?")
-
     suggestions.extend(
         [
             f"{profile['region']}에서 외국인 민원 상담은 어디로 가면 돼요?",
@@ -899,6 +1280,11 @@ def render_chat_composer():
 
 
 def render_chat():
+    # 생활가이드 상세페이지의 "AI에게 질문" 버튼에서 넘어온 경우, 질문 예시를 안내
+    prefill_topic = st.session_state.pop("chat_prefill_topic", None)
+    if prefill_topic:
+        st.info(f"💡 이렇게 물어보면 돼요: \"{prefill_topic}에 대해 더 자세히 알려줘\"")
+
     if "messages" not in st.session_state:
         st.session_state.messages = []
     st.session_state.setdefault("chat_draft", "")
@@ -972,15 +1358,28 @@ def render_nearby():
 def render_mylife():
     st.subheader("마이라이프")
     st.caption(f"체류기간 {profile['duration']} 기준 체크리스트 · 스크랩")
+
+    saved_ids = st.session_state.get("saved_guide_ids", set())
+    saved_items = [GUIDE_ITEMS_BY_ID[i] for i in saved_ids if i in GUIDE_ITEMS_BY_ID]
+    if saved_items:
+        st.markdown('<div class="injoy-section-title">저장한 생활가이드</div>', unsafe_allow_html=True)
+        for item in saved_items:
+            if render_guide_item_card(item):
+                st.session_state.guide_detail_id = item["id"]
+                st.switch_page(pages_by_id["guide"])
+        st.markdown('<div class="injoy-spacer"></div>', unsafe_allow_html=True)
+
     st.info(
-        "🚧 세션 기반 체크리스트·스크랩 기능 준비 중이에요. "
+        "🚧 체류기간 기준 체크리스트는 준비 중이에요. "
         "(로그인 없이 st.session_state로만 유지 — 새로고침하면 초기화됩니다)"
     )
 
 
-# ── 하단 고정 네비게이션 (Lovable 원본처럼 화면 최하단 고정) ──────────────
-# st.tabs() 대신 session_state 기반 수동 라우팅을 써야 "현재 탭에 맞는 아이콘만
-# 강조색으로 표시"가 가능하고, 그래야 Lovable의 활성/비활성 네비 스타일을 재현할 수 있다.
+# ── 5개 탭을 진짜 별도 엔드포인트(URL)로 분리 ────────────────────────
+# st.navigation + st.Page를 쓰면 각 탭이 실제 URL(/home, /guide, /chat, /nearby,
+# /mylife)을 가지게 된다 — 새로고침해도 같은 탭 유지, 북마크/공유, 브라우저
+# 뒤로가기까지 전부 됨. position="hidden"으로 기본 사이드바 네비 UI는 숨기고,
+# 화면 하단의 커스텀 네비(Lovable 스타일)에서 st.switch_page로 이동시킨다.
 NAV_ITEMS = [
     ("home", "홈", "🏠"),
     ("guide", "생활가이드", "📖"),
@@ -988,8 +1387,6 @@ NAV_ITEMS = [
     ("nearby", "내주변", "📍"),
     ("mylife", "마이라이프", "👤"),
 ]
-st.session_state.setdefault("active_tab", "home")
-
 PAGE_RENDERERS = {
     "home": render_home,
     "guide": render_guide,
@@ -997,18 +1394,28 @@ PAGE_RENDERERS = {
     "nearby": render_nearby,
     "mylife": render_mylife,
 }
-PAGE_RENDERERS[st.session_state.active_tab]()
 
-# 페이지 스크립트에서 가장 마지막에 그려지는 st.columns(5)여야
-# CSS의 `:last-of-type` 스코핑이 다른 컬럼(카테고리 그리드 등)을 건드리지 않는다.
+pages_by_id = {
+    tab_id: st.Page(
+        PAGE_RENDERERS[tab_id],
+        title=label,
+        icon=icon,
+        url_path=tab_id,
+        default=(tab_id == "home"),
+    )
+    for tab_id, label, icon in NAV_ITEMS
+}
+
+current_page = st.navigation(list(pages_by_id.values()), position="hidden")
+current_page.run()
+
 with st.container(key="bottom_nav", horizontal=True, gap=None):
     for tab_id, label, icon in NAV_ITEMS:
-        is_active = st.session_state.active_tab == tab_id
+        is_active = current_page.url_path == tab_id
         if st.button(
             f"{icon}\n{label}",
             key=f"nav_{tab_id}",
             width="stretch",
-            type="primary" if is_active else "tertiary",
+            type="primary" if is_active else "secondary",
         ):
-            st.session_state.active_tab = tab_id
-            st.rerun()
+            st.switch_page(pages_by_id[tab_id])
