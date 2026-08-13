@@ -10,8 +10,13 @@ type Contact = {
 const localeCodes=new Set(["en","zh","vi","ja","th","mn","ru","uz","tl","km","ne"]);
 async function translateAnswer(text:string,locale?:string){if(!locale||!localeCodes.has(locale))return text;try{const protectedText=text.replace(/인천/g,"INJOY_INCHEON");const url=new URL("https://translate.googleapis.com/translate_a/single");url.searchParams.set("client","gtx");url.searchParams.set("sl","ko");url.searchParams.set("tl",locale);url.searchParams.set("dt","t");url.searchParams.set("q",protectedText);const response=await fetch(url);if(!response.ok)return text;const data=await response.json();return ((data[0]||[]).map((part:string[])=>part[0]).join("")||text).replace(/INJOY_INCHEON/gi,"Incheon").replace(/Seoul/gi,"Incheon")}catch{return text}}
 
-const STOP_WORDS = new Set(["어디", "어떻게", "하나요", "해야", "문의", "전화", "알려", "주세요", "관련", "내용", "있나요", "싶어요"]);
+const STOP_WORDS = new Set(["어디", "어떻게", "하나요", "해야", "문의", "전화", "알려", "주세요", "관련", "내용", "있나요", "싶어요", "한국", "인천", "만드는", "방법", "뭐야"]);
 const INTENTS:[RegExp,string[]][] = [
+  [/은행|계좌|통장|계좌개설/, ["금융", "은행", "계좌", "개설"]],
+  [/체크카드|신용카드|인터넷뱅킹|모바일뱅킹/, ["금융", "은행", "체크카드", "인터넷뱅킹"]],
+  [/송금|해외송금/, ["금융", "은행", "송금", "해외송금"]],
+  [/버스|지하철|교통카드|티머니|캐시비|환승|대중교통/, ["교통", "버스", "지하철", "교통카드", "예매", "티머니"]],
+  [/휴대폰|핸드폰|통신|유심|usim|알뜰폰/, ["통신", "휴대폰", "개통", "유심", "알뜰폰"]],
   [/쓰레기|폐기물|분리배출|재활용|종량제/, ["쓰레기", "폐기물", "재활용", "청소", "자원순환", "환경"]],
   [/주차|주정차|차량|자동차/, ["교통", "주차", "자동차", "차량"]],
   [/임금|급여|근로|노동|해고|산재|취업/, ["일자리", "고용", "노동", "근로", "산업", "경제"]],
@@ -34,7 +39,7 @@ function expandedTokens(question:string) {
 }
 function faqScore(question:string, item:Faq) {
   const haystack = `${item.question} ${item.answer} ${item.category}`.toLowerCase();
-  return expandedTokens(question).reduce((score, word) => score + (haystack.includes(word) ? 1 : 0), 0);
+  return expandedTokens(question).reduce((score, word) => score + (haystack.includes(word) ? (item.category.includes(word) ? 3 : 1) : 0), 0);
 }
 function compatibleDistricts(region:string) {
   const map:Record<string,string[]> = {
@@ -44,6 +49,8 @@ function compatibleDistricts(region:string) {
   return map[region] || [region];
 }
 function rankContacts(question:string, region:string) {
+  const needsInstitution = /병원|진료|아파|통증|내과|외과|피부|치과|산부인과|정형외과|이비인후과|쓰레기|폐기물|분리배출|재활용|종량제|주차|주정차|임금|급여|근로|노동|해고|산재|비자|체류|외국인등록|출입국|전입|등본|증명서|주민등록|복지|세금|여권|혼인|출생|사업|영업|창업|허가|관공서|기관|부서|전화번호|문의처/.test(question);
+  if (!needsInstitution) return [];
   const words = expandedTokens(question);
   const medical = /병원|진료|아파|통증|내과|외과|피부|치과|산부인과|정형외과|이비인후과/.test(question);
   const districts = compatibleDistricts(region);
@@ -53,7 +60,7 @@ function rankContacts(question:string, region:string) {
     const district = districts.includes(item.district) ? 12 : 0;
     const type = medical ? (item.type === "medical" ? 8 : -8) : (item.type === "public-office" ? 3 : -6);
     return { item, score:match + district + type, match };
-  }).filter(result => result.match > 0 && (medical || result.item.type === "public-office"))
+  }).filter(result => result.match >= 2 && (medical || result.item.type === "public-office"))
     .sort((a,b) => b.score - a.score || b.match - a.match);
 }
 
@@ -63,15 +70,19 @@ const CASUAL_PATTERNS = [
   /^(안녕|안녕하세요|하이|헬로|hello|hi|hey)[!?.~\s]*$/i,
   /^(고마워|고맙습니다|감사|감사합니다|땡큐|thanks|thank you)[!?.~\s]*$/i,
   /^(응|어|ㅇㅇ|네|넵|그래|좋아|오케이|ok|okay|와|대박|헐|ㅋㅋ+|ㅎㅎ+|야+)[!?.~\s]*$/i,
+  /^(아니|뭔소리|무슨소리|개소리|말도안돼|틀렸어|도움안돼)[!?.~\s]*$/i,
 ];
 function isCasualMessage(question:string) {
   const normalized = question.trim();
   const hasIntent = INTENTS.some(([pattern]) => pattern.test(normalized));
-  return CASUAL_PATTERNS.some(pattern => pattern.test(normalized)) || (!hasIntent && normalized.length <= 5);
+  const conversational = /이름|너 누구|뭐 하는 애|개소리|뭔 소리|무슨 소리|말도 안|틀렸|도움.?안/.test(normalized);
+  return conversational || CASUAL_PATTERNS.some(pattern => pattern.test(normalized)) || (!hasIntent && normalized.length <= 5);
 }
 function casualFallback(question:string) {
   if (/고마|감사|땡큐|thank/i.test(question)) return "천만에요! 또 궁금한 게 있으면 편하게 물어보세요 :)";
   if (/안녕|하이|헬로|hello|hi|hey/i.test(question)) return "안녕하세요! 인천 생활에서 궁금한 걸 편하게 물어보세요 :)";
+  if (/이름|너 누구|뭐 하는 애/i.test(question)) return "저는 인천 생활을 안내하는 INJOY 도우미예요. 은행, 교통, 행정, 병원처럼 궁금한 내용을 물어보세요 :)";
+  if (/아니|뭔.?소리|무슨.?소리|개소리|말도.?안|틀렸|도움.?안/i.test(question)) return "맞아요, 방금 답변은 질문과 맞지 않았어요. 원하는 내용을 한 번만 다시 말해주시면 그 질문만 기준으로 찾아볼게요.";
   return "네, 여기 있어요 :) 궁금한 내용을 편하게 말씀해주세요.";
 }
 
@@ -79,8 +90,10 @@ function casualFallback(question:string) {
 // FAQ/기관 검색이 빈손으로 나온다. 검색용 쿼리에는 최근 사용자 발화 1~2개를
 // 같이 섞어서 문맥을 보강하고, 화면에 보여주는 원문(question)은 그대로 둔다.
 function buildRetrievalQuery(question:string, history:HistoryTurn[]) {
-  const recentUserTurns = history.filter(turn => turn.role === "user").slice(-2).map(turn => turn.content);
-  return [...recentUserTurns, question].join(" ");
+  const isFollowUp = /^(그거|그건|그게|거기|그곳|그러면|그럼|왜|전화번호|주소|더 자세|어디로|어떻게 해)/.test(question.trim());
+  if (!isFollowUp) return question;
+  const previous = [...history].reverse().find(turn => turn.role === "user")?.content;
+  return previous ? `${previous} ${question}` : question;
 }
 
 export async function POST(request:Request) {
@@ -107,12 +120,13 @@ export async function POST(request:Request) {
     district:recommendation.district, type:recommendation.type,
   } : null;
   const casual = isCasualMessage(question);
-  const fallbackBase = rankedFaq[0]?.score >= 2 ? rankedFaq[0].item.answer : recommendation
+  const hasFaq = rankedFaq[0]?.score >= 2;
+  const fallbackBase = hasFaq ? rankedFaq[0].item.answer : recommendation
     ? "보유한 인천 기관 데이터를 기준으로 문의할 곳을 찾았어요."
     : "현재 준비된 생활가이드에서 정확한 답을 찾지 못했어요.";
   const fallbackContact = recommendation
     ? `\n\n${region} 기준으로 ${recommendation.institution} ${recommendation.department}${recommendation.team ? `(${recommendation.team})` : ""}에 문의해 보세요. 전화번호는 ${recommendation.phone}입니다.`
-    : "\n\n외국인종합안내센터 1345 또는 관련 공식 기관에서 확인해주세요.";
+    : hasFaq ? "" : "\n\n외국인종합안내센터 1345 또는 관련 공식 기관에서 확인해주세요.";
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return Response.json({ answer:await translateAnswer(casual ? casualFallback(question) : fallbackBase + fallbackContact,profile?.locale), source:casual ? "기본 대화" : recommendation ? "FAQ+기관 데이터" : "FAQ", contact:casual ? null : contact });
 
@@ -149,7 +163,7 @@ ${contactContext || "관련 기관 후보 없음"}` },
       { role:"user", content:question }
     ]})
   });
-  if (!response.ok) return Response.json({ answer:await translateAnswer(casual ? casualFallback(question) : fallbackBase + fallbackContact,profile?.locale), source:casual ? "기본 대화" : "FAQ+기관 데이터", contact:casual ? null : contact });
+  if (!response.ok) return Response.json({ answer:await translateAnswer(casual ? casualFallback(question) : fallbackBase + fallbackContact,profile?.locale), source:casual ? "기본 대화" : recommendation ? "FAQ+기관 데이터" : "FAQ", contact:casual ? null : contact });
   const data = await response.json();
   return Response.json({ answer:data.choices?.[0]?.message?.content || fallbackBase + fallbackContact, source:"AI+FAQ+기관 데이터", contact });
 }

@@ -48,6 +48,7 @@ export default function OnboardingPage() {
   const [hasAccount, setHasAccount] = useState("no");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<Profile | null>(null);
+  const [started,setStarted]=useState(false);
 
   useEffect(() => {
     try {
@@ -96,6 +97,8 @@ export default function OnboardingPage() {
     );
   }
 
+  if(!started)return <main className="welcome-shell"><section className="welcome-card"><header><span className="brand"><i>INJOY</i><b>INCHEON</b></span><label className="language-select"><select aria-label={t.languageLabel} value={language} onChange={event=>changeLanguage(event.target.value as LocaleCode)}>{languages.map(item=><option value={item.code} key={item.code}>{item.flag} {item.name}</option>)}</select></label></header><div className="welcome-visual"><div className="map-scene" aria-hidden="true"><span/><span/><span/><i/><i/><i/></div><img src="/characters/smile-cutout-v2.png" alt="INJOY 인천 생활 도우미 캐릭터"/></div><p className="eyebrow">YOUR INCHEON LIFE COMPANION</p><h1>{t.heroTop}<br/><span>{t.heroAccent}</span></h1><p className="welcome-copy">{t.heroBody}</p><button className="primary-button" onClick={()=>setStarted(true)}>{t.submit} <span>→</span></button><small>{t.privacy}</small></section></main>;
+
   return (
     <main className="shell onboarding-shell">
       <div className="onboarding-glow glow-one"/><div className="onboarding-glow glow-two"/>
@@ -111,7 +114,7 @@ export default function OnboardingPage() {
             </select>
           </label>
         </div>
-        <div className="intro-copy"><div><p className="intro-kicker">YOUR INCHEON LIFE COMPANION</p><h1>{t.heroTop}<br /><span>{t.heroAccent}</span></h1><p>{t.heroBody}</p></div></div>
+        <div className="intro-copy"><div><p className="intro-kicker">YOUR INCHEON LIFE COMPANION</p><h1>{t.heroTop}<br /><span>{t.heroAccent}</span></h1><p>{t.heroBody}</p></div><img className="onboarding-character" src="/characters/emoji-question.png" alt="궁금해하는 INJOY 캐릭터"/></div>
         <div className="progress"><span /><span /><span /></div>
       </header>
 

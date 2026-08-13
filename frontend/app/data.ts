@@ -13,7 +13,7 @@ export const guideItems:GuideItem[] = [
   {id:"waste",icon:"♻️",title:"쓰레기 분리배출 이해하기",desc:"종량제 봉투와 재활용 분리배출 요일은 거주지 행정복지센터에서 확인할 수 있어요.",category:"일상생활",badge:"생활 팁"},
   {id:"emergency",icon:"🚨",title:"긴급 연락처를 저장해두세요",desc:"응급·화재는 119, 범죄 신고는 112, 외국인 안내는 1345로 연락하세요.",category:"긴급상황",badge:"공식 정보"},
 ];
-export const categories=["전체","교통","의료","은행·금융","주거","통신","일상생활","직장·노동","행정·비자","긴급상황"];
+export const categories=["전체","행정·비자","교통","의료","은행·금융","주거","통신","일상생활","직장·노동","긴급상황"];
 export const checklistByDuration:Record<string,[string,string,string][]>={
  "1개월 미만":[["transport","대중교통 이용법 익히기","교통"],["phone","휴대폰 개통하기","통신"],["bank","은행 기본 이해하기","은행·금융"],["hospital","병원 이용법 알기","의료"],["waste","쓰레기 분리배출 이해하기","일상생활"],["support","가까운 지원기관 찾기","행정·비자"],["apps","유용한 한국 앱 익히기","일상생활"]],
  "1개월~6개월":[["address","주소 변경 신고 확인하기","행정·비자"],["insurance","건강보험 확인하기","의료"],["contract","근로계약서 확인하기","직장·노동"],["banking","모바일뱅킹 익히기","은행·금융"],["korean","한국어 교육기관 찾기","일상생활"],["lease","임대차 계약 확인하기","주거"],["emergency","긴급 연락처 저장하기","긴급상황"]],
