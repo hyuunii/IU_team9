@@ -2,6 +2,8 @@
 import {useEffect,useState} from "react";
 import Link from "next/link";
 import {guideItems} from "../../data";
+import appTranslations from "../../app-translations.json";
+import type {LocaleCode} from "../../onboarding-i18n";
 
 const details:Record<string,{why:string;steps:string[];service:string;caution:string;official:string}>={
  "transit-card":{why:"인천 i-패스는 K-패스를 기반으로 인천시민의 대중교통비 일부를 돌려주는 제도예요. 인천에 주소를 둔 19세 이상 주민은 외국인등록번호로 주소지 검증을 완료한 경우에도 이용할 수 있어요.",steps:["카드사에서 선불형 또는 후불형 K-패스 카드를 신청해 수령하세요.","K-패스 앱이나 누리집에서 카드번호를 등록하고 회원가입하세요.","주민등록번호 또는 외국인등록번호를 입력해 인천 주소지 검증을 완료하세요.","등록한 카드로 월 15회 이상 시내·마을·광역버스와 도시철도·GTX를 이용하세요.","일반 20%, 청년 19~39세와 65세 이상 30%, 저소득층 53% 등 본인 조건에 맞는 환급을 확인하세요.","다음 달 카드사 방식에 따라 청구할인·계좌입금·선불카드 충전으로 환급받으세요."],service:"인천 i-패스 제도 문의 032-120 · K-패스 이용·적립금 문의 031-427-4415",caution:"시외·고속버스, KTX·SRT·새마을·무궁화호, 택시 등은 환급 대상이 아니에요. 가입한 첫 달을 제외하고 월 15회 미만 이용하면 환급되지 않으며, 혜택은 중복 지급되지 않고 가장 큰 환급액이 적용돼요.",official:"2026년 2월 4일 기준 인천광역시 공식 안내를 반영했어요. 카드 발급 후 K-패스 앱 또는 korea-pass.kr에서 카드 등록과 주소지 검증을 모두 완료해야 인천 i-패스가 자동 적용됩니다."},
@@ -21,19 +23,24 @@ const details:Record<string,{why:string;steps:string[];service:string;caution:st
 export default function GuideDetail({id}:{id:string}){
  const item=guideItems.find(value=>value.id===id);const info=details[id];
  const [saved,setSaved]=useState(false);
+ const [locale,setLocale]=useState<LocaleCode>("ko");
+ const [remote,setRemote]=useState<Record<string,string>>({});
  useEffect(()=>{try{setSaved(JSON.parse(localStorage.getItem("injoy-saved")||"[]").includes(id))}catch{}},[id]);
+ useEffect(()=>{const value=(localStorage.getItem("injoy-language")||"ko") as LocaleCode;setLocale(value)},[]);
+ useEffect(()=>{if(locale==="ko"||!item||!info)return;const texts=[item.title,item.desc,item.badge,info.why,...info.steps,info.service,info.caution,info.official,"생활가이드","저장됨","저장하기","AI에게 질문","가까운 도움처","왜 중요한가요","이렇게 하면 돼요","도움이 되는 서비스","주의할 점","공식 정보 확인","관련 정보","이것도 알아두면 좋아요","홈","내 주변","마이 라이프",...guideItems.flatMap(value=>[value.title,value.desc])];fetch("/api/translate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({locale,texts})}).then(r=>r.json()).then(data=>setRemote(Object.fromEntries(texts.map((text,index)=>[text,data.translations?.[index]||text])))).catch(()=>{})},[locale,id,item,info]);
+ const dictionary=appTranslations[locale] as Record<string,string>;const tr=(text:string)=>remote[text]||dictionary?.[text]||text;
  function toggle(){const list:string[]=JSON.parse(localStorage.getItem("injoy-saved")||"[]");const next=list.includes(id)?list.filter(value=>value!==id):[...list,id];localStorage.setItem("injoy-saved",JSON.stringify(next));setSaved(next.includes(id))}
- if(!item||!info)return <main className="guide-detail-shell"><p>해당 생활가이드 정보를 찾을 수 없어요.</p><Link href="/guide">생활가이드로 돌아가기</Link></main>;
+ if(!item||!info)return <main className="guide-detail-shell"><p>{tr("해당 생활가이드 정보를 찾을 수 없어요.")}</p><Link href="/guide">{tr("생활가이드로 돌아가기")}</Link></main>;
  const sameCategory=guideItems.filter(value=>value.id!==id&&value.category===item.category);
  const fallbackRelated=guideItems.filter(value=>value.id!==id&&value.category!==item.category);
  const related=[...sameCategory,...fallbackRelated].slice(0,2);
- return <main className="guide-detail-shell"><header className="detail-top"><Link href="/guide">‹ 생활가이드</Link><span>INJOY · GUIDE</span></header><article className="guide-detail">
-  <section className="detail-hero"><div className="detail-meta"><span className="detail-main-icon">{item.icon}</span><em>{item.badge}</em></div><h1>{item.title}</h1><p>{item.desc}</p><div className="detail-actions"><button onClick={toggle}>{saved?"✓ 저장됨":"♡ 저장"}</button><Link href={`/ask?question=${encodeURIComponent(item.title)}`}>◉ AI에게 질문</Link><Link href="/nearby">⌖ 가까운 도움처</Link></div></section>
-  <section className="detail-block"><h2>왜 중요한가요</h2><p>{info.why}</p></section>
-  <section className="detail-block steps-block"><h2>이렇게 하면 돼요</h2><ol>{info.steps.map((step,index)=><li key={step}><span>{index+1}</span><p>{step}</p></li>)}</ol></section>
-  <section className="detail-callout service"><h2>도움이 되는 서비스</h2><p>{info.service}</p></section>
-  <section className="detail-callout caution"><h2>△ 주의할 점</h2><p>{info.caution}</p></section>
-  <section className="detail-callout official"><h2>▤ 공식 정보 확인</h2><p>{info.official}</p></section>
-  <section className="related-section"><h2>관련 정보</h2><p>이것도 알아두면 좋아요</p>{related.map(value=><Link href={`/guide/${value.id}`} key={value.id}><span>{value.icon}</span><div><b>{value.title}</b><small>{value.desc}</small></div><i>›</i></Link>)}</section>
- </article><nav className="bottom-nav detail-bottom-nav"><Link href="/home"><span className="nav-face nav-face-home" aria-hidden="true"/>홈</Link><Link className="active" href="/guide"><span className="nav-face nav-face-guide" aria-hidden="true"/>생활가이드</Link><Link href="/ask"><span className="nav-face nav-face-ask" aria-hidden="true"/>AI에게 질문</Link><Link href="/nearby"><span className="nav-face nav-face-nearby" aria-hidden="true"/>내 주변</Link><Link href="/my"><span className="nav-face nav-face-my" aria-hidden="true"/>마이 라이프</Link></nav></main>
+ return <main className="guide-detail-shell"><header className="detail-top"><Link href="/guide">‹ {tr("생활가이드")}</Link><span>INJOY · GUIDE</span></header><article className="guide-detail">
+  <section className="detail-hero"><div className="detail-meta"><span className="detail-main-icon">{item.icon}</span><em>{tr(item.badge)}</em></div><h1>{tr(item.title)}</h1><p>{tr(item.desc)}</p><div className="detail-actions"><button onClick={toggle}>{saved?`✓ ${tr("저장됨")}`:`♡ ${tr("저장하기")}`}</button><Link href={`/ask?question=${encodeURIComponent(item.title)}`}>◉ {tr("AI에게 질문")}</Link><Link href="/nearby">⌖ {tr("가까운 도움처")}</Link></div></section>
+  <section className="detail-block"><h2>{tr("왜 중요한가요")}</h2><p>{tr(info.why)}</p></section>
+  <section className="detail-block steps-block"><h2>{tr("이렇게 하면 돼요")}</h2><ol>{info.steps.map((step,index)=><li key={step}><span>{index+1}</span><p>{tr(step)}</p></li>)}</ol></section>
+  <section className="detail-callout service"><h2>{tr("도움이 되는 서비스")}</h2><p>{tr(info.service)}</p></section>
+  <section className="detail-callout caution"><h2>△ {tr("주의할 점")}</h2><p>{tr(info.caution)}</p></section>
+  <section className="detail-callout official"><h2>▤ {tr("공식 정보 확인")}</h2><p>{tr(info.official)}</p></section>
+  <section className="related-section"><h2>{tr("관련 정보")}</h2><p>{tr("이것도 알아두면 좋아요")}</p>{related.map(value=><Link href={`/guide/${value.id}`} key={value.id}><span>{value.icon}</span><div><b>{tr(value.title)}</b><small>{tr(value.desc)}</small></div><i>›</i></Link>)}</section>
+ </article><nav className="bottom-nav detail-bottom-nav"><Link href="/home"><span className="nav-face nav-face-home" aria-hidden="true"/>{tr("홈")}</Link><Link className="active" href="/guide"><span className="nav-face nav-face-guide" aria-hidden="true"/>{tr("생활가이드")}</Link><Link href="/ask"><span className="nav-face nav-face-ask" aria-hidden="true"/>{tr("AI에게 질문")}</Link><Link href="/nearby"><span className="nav-face nav-face-nearby" aria-hidden="true"/>{tr("내 주변")}</Link><Link href="/my"><span className="nav-face nav-face-my" aria-hidden="true"/>{tr("마이 라이프")}</Link></nav></main>
 }
