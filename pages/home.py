@@ -1,14 +1,13 @@
 """홈 탭 화면 — /home
 
 st.Page(file_path=...)로 등록되기 때문에 이 파일은 매 rerun마다 처음부터 다시 실행되는
-"진짜 스크립트"다 (import된 모듈처럼 캐싱되지 않음). 그래서 st.session_state.profile을
-여기 최상위에서 바로 읽어도 안전하다.
+"진짜 스크립트"다 (import된 모듈처럼 캐싱되지 않음).
 """
 import streamlit as st
 
 import common
 
-profile = st.session_state.profile
+profile = common.require_profile()
 
 purpose_note = f" · {profile['purpose']}" if profile.get("purpose") else ""
 dept_note = common.get_department_info(profile["region"], common.dept_data)

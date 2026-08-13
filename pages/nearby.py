@@ -3,7 +3,7 @@ import streamlit as st
 
 import common
 
-profile = st.session_state.profile
+profile = common.require_profile()
 
 st.subheader("내주변")
 st.caption(f"{profile['region']} 기준으로 준비 중이에요.")

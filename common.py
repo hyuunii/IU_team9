@@ -18,9 +18,13 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
+from utils.openai_env import normalize_openai_env
 
-load_dotenv()  # utils/*.py가 import 시점에 OpenAI() 클라이언트를 만들기 때문에,
-                # .env 로딩은 반드시 그 import들보다 먼저 실행돼야 함
+load_dotenv(override=True)  # utils/*.py가 import 시점에 OpenAI() 클라이언트를 만들기 때문에,
+                            # .env 로딩은 반드시 그 import들보다 먼저 실행돼야 함
+
+
+OPENAI_ENV_ERROR = normalize_openai_env()
 
 from openai import OpenAI
 
@@ -450,21 +454,21 @@ def inject_css():
         }
         .injoy-chat-user-bubble {
             max-width: 85%;
-            border-radius: 24px 24px 8px 24px;
+            border-radius: 22px 22px 8px 22px;
             background: #6BA9E6;
             color: #FFFFFF;
             font-size: 14px;
             font-weight: 700;
             line-height: 1.5;
-            padding: 10px 16px;
+            padding: 9px 14px;
             box-shadow: 0 12px 26px -16px rgba(63,130,199,0.9);
         }
         .injoy-chat-assistant-card {
             background: #FFFFFF;
-            border-radius: 25.6px;
+            border-radius: 22px;
             box-shadow: 0 8px 24px -12px rgba(92,65,44,0.25);
-            padding: 16px;
-            margin: 0 0 14px;
+            padding: 14px;
+            margin: 0 0 12px;
             color: #2A1B11;
         }
         .injoy-chat-answer-label {
@@ -476,8 +480,8 @@ def inject_css():
             border-radius: 999px;
             font-size: 11px;
             font-weight: 800;
-            padding: 5px 10px;
-            margin-bottom: 10px;
+            padding: 4px 9px;
+            margin-bottom: 8px;
         }
         .injoy-chat-answer-text {
             font-size: 14px;
@@ -486,21 +490,21 @@ def inject_css():
         }
         .injoy-chat-hero {
             background: linear-gradient(160deg, #6BA9E6 0%, #4D8FD1 100%);
-            border-radius: 25.6px;
+            border-radius: 22px;
             box-shadow: 0 18px 40px -20px rgba(63,130,199,0.58);
             color: #FFFFFF;
-            padding: 20px;
-            margin-bottom: 16px;
+            padding: 14px;
+            margin-bottom: 12px;
         }
         .injoy-chat-hero-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 16px;
+            width: 30px;
+            height: 30px;
+            border-radius: 12px;
             background: rgba(255,255,255,0.2);
             display: grid;
             place-items: center;
-            font-size: 18px;
-            margin-bottom: 10px;
+            font-size: 15px;
+            margin-bottom: 8px;
         }
         .injoy-chat-kicker {
             color: rgba(255,255,255,0.84);
@@ -512,10 +516,10 @@ def inject_css():
         }
         .injoy-chat-title {
             color: #FFFFFF;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 800;
             line-height: 1.35;
-            margin-bottom: 8px;
+            margin-bottom: 0;
         }
         .injoy-chat-sub {
             color: rgba(255,255,255,0.9);
@@ -527,12 +531,12 @@ def inject_css():
             font-size: 11px;
             font-weight: 800;
             letter-spacing: 0;
-            margin: 10px 0 8px;
+            margin: 8px 0 6px;
         }
         .st-key-chat_suggestions [data-testid="stVerticalBlock"] {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 4px;
         }
         .st-key-chat_suggestions [data-testid="stElementContainer"],
         .st-key-chat_suggestions div[data-testid="stButton"] {
@@ -551,7 +555,7 @@ def inject_css():
             font-weight: 700 !important;
             line-height: 1.25 !important;
             white-space: normal;
-            padding: 8px 12px !important;
+            padding: 6px 10px !important;
             margin: 0 !important;
         }
         .st-key-chat_suggestions button:hover {
@@ -592,22 +596,12 @@ def inject_css():
             position: absolute;
             left: 16px;
             top: 50%;
-            transform: translateY(-49%);
-            z-index: 2;
-            color: #1F2937;
-            font-size: 26px;
-            font-weight: 300;
-            pointer-events: none;
-        }
-        .st-key-chat_draft::after {
-            content: "🎙";
-            position: absolute;
-            right: 14px;
-            top: 50%;
             transform: translateY(-50%);
             z-index: 2;
             color: #1F2937;
-            font-size: 17px;
+            font-size: 25px;
+            font-weight: 300;
+            line-height: 1;
             pointer-events: none;
         }
         .st-key-chat_draft [data-testid="stTextInput"] label {
@@ -633,7 +627,7 @@ def inject_css():
             color: #111827 !important;
             font-size: 15px !important;
             padding-left: 44px !important;
-            padding-right: 38px !important;
+            padding-right: 14px !important;
             caret-color: #6BA9E6;
             border: 0 !important;
             outline: none !important;
@@ -641,6 +635,10 @@ def inject_css():
         }
         .st-key-chat_draft input::placeholder {
             color: #8A95A3 !important;
+        }
+        .st-key-chat_draft [data-testid="InputInstructions"],
+        .st-key-chat_draft [data-testid="stWidgetLabel"] + div + div {
+            display: none !important;
         }
         .st-key-chat_send button {
             width: 48px !important;
@@ -651,9 +649,12 @@ def inject_css():
             background: #6BA9E6 !important;
             border: none !important;
             color: #FFFFFF !important;
-            font-size: 22px !important;
+            font-size: 88px !important;
             font-weight: 800 !important;
-            line-height: 1 !important;
+            line-height: 0.42 !important;
+            display: grid !important;
+            place-items: center !important;
+            overflow: visible !important;
             box-shadow: 0 14px 28px -16px rgba(63,130,199,0.95) !important;
             padding: 0 !important;
         }
@@ -665,7 +666,8 @@ def inject_css():
             color: #76695D;
             font-size: 10px;
             line-height: 1.3;
-            padding-top: 6px;
+            margin-top: -2px;
+            padding-top: 0;
         }
 
         /* 일반 버튼(뒤로가기 등) 스타일 */
@@ -930,6 +932,15 @@ def render_onboarding():
         st.rerun()
 
 
+def require_profile() -> dict:
+    """Render onboarding instead of crashing when a page is refreshed directly."""
+    if "profile" not in st.session_state:
+        inject_css()
+        render_onboarding()
+        st.stop()
+    return st.session_state.profile
+
+
 # ── 로그 저장 (온도계 대시보드용 산출물 데이터) ──────────────────────────
 def log_question(question: str, category: str, region: str, risk: str, source: str):
     row = {
@@ -947,15 +958,44 @@ def log_question(question: str, category: str, region: str, risk: str, source: s
         df_row.to_csv(LOG_PATH, mode="w", header=True, index=False, encoding="utf-8-sig")
 
 
+def openai_setup_error_message(error: Exception | None = None) -> str:
+    detail = OPENAI_ENV_ERROR or "OPENAI_API_KEY가 올바른지 확인해 주세요."
+    if error is not None:
+        error_type = type(error).__name__
+        error_text = str(error)
+        if error_type == "AuthenticationError" or "invalid_api_key" in error_text or "Incorrect API key" in error_text:
+            detail = ".env의 OPENAI_API_KEY가 유효하지 않아요. 실제 팀 API 키를 다시 붙여넣어 주세요."
+        elif error_type == "APIConnectionError":
+            detail = "OpenAI 서버에 연결하지 못했어요. 네트워크 연결 또는 실행 환경의 인터넷 권한을 확인해 주세요."
+        elif error_type == "RateLimitError":
+            detail = "OpenAI 사용량 한도 또는 결제 상태를 확인해야 해요."
+    return (
+        "답변을 만들기 전에 OpenAI 설정을 확인해야 해요.\n\n"
+        f"- {detail}\n"
+        "- .env의 OPENAI_API_KEY에는 긴 대시 문자나 한글이 들어가면 안 돼요.\n"
+        "- 실제 키를 다시 붙여넣은 뒤 앱을 새로고침해 주세요."
+    )
+
+
 # ── 답변 생성 (위험도별 3단계 라우팅) ────────────────────────────────
 def generate_answer(question: str) -> str:
+    if OPENAI_ENV_ERROR:
+        return openai_setup_error_message()
+
     # 1단계: RAG 검색
-    if faq_embeddings is not None:
-        top_docs, top_score = search_top_k(question, faq_data, faq_embeddings, k=3)
-    else:
+    try:
+        if faq_embeddings is not None:
+            top_docs, top_score = search_top_k(question, faq_data, faq_embeddings, k=3)
+        else:
+            top_docs, top_score = [], 0.0
+    except Exception:
         top_docs, top_score = [], 0.0
 
-    classification = classify_question(question)
+    try:
+        classification = classify_question(question)
+    except Exception as error:
+        return openai_setup_error_message(error)
+
     category, region, risk = classification["category"], classification["region"], classification["risk"]
 
     answer_language = st.session_state.get("profile", {}).get("language", "사용자가 사용한 언어")
@@ -992,14 +1032,17 @@ def generate_answer(question: str) -> str:
             system_prompt = "너는 인천 거주 외국인을 돕는 다국어 안내 챗봇이야. 확실하지 않은 정보는 지어내지 말고, 정확한 정보는 하이코리아(hikorea.go.kr) 또는 외국인종합안내센터(1345)에서 확인하라고 안내해."
             source = "안내(폴백)"
 
-    response = client.chat.completions.create(
-        model=CHAT_MODEL,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": question},
-        ],
-    )
-    answer = response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model=CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question},
+            ],
+        )
+        answer = response.choices[0].message.content
+    except Exception as error:
+        return openai_setup_error_message(error)
 
     # 부서 라우팅 정보 덧붙이기 (지역이 특정됐고, 행정 관련 카테고리일 때만)
     dept_note = get_department_info(region, dept_data)

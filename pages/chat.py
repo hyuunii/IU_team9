@@ -5,7 +5,7 @@ import streamlit as st
 
 import common
 
-profile = st.session_state.profile
+profile = common.require_profile()
 
 
 def build_chat_suggestions() -> list[str]:
@@ -28,7 +28,7 @@ def build_chat_suggestions() -> list[str]:
             "입국 후 첫 한 달에 꼭 해야 할 일은 뭐예요?",
         ]
     )
-    return suggestions[:5]
+    return suggestions[:3]
 
 
 def format_chat_text(text: str) -> str:
@@ -112,12 +112,7 @@ if not st.session_state.messages:
         f"""
         <div class="injoy-chat-hero">
             <div class="injoy-chat-hero-icon">✦</div>
-            <div class="injoy-chat-kicker">Life Navigator</div>
             <div class="injoy-chat-title">{profile['nickname']}님, 한국 생활에서 막히는 걸 편하게 물어보세요</div>
-            <div class="injoy-chat-sub">
-                {profile.get('language', '선택한 언어')}로 답변하고, 행정·의료·은행·통신처럼
-                처음엔 놓치기 쉬운 정보도 함께 안내해요.
-            </div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -133,15 +128,16 @@ if pending_prompt:
     st.session_state.messages.append(answer_msg)
     render_chat_message(answer_msg)
 
-st.markdown('<div class="injoy-chat-section">추천 질문</div>', unsafe_allow_html=True)
-with st.container(key="chat_suggestions"):
-    for i, question in enumerate(build_chat_suggestions()):
-        st.button(
-            question,
-            key=f"chat_suggestion_{i}",
-            on_click=queue_chat_prompt,
-            args=(question,),
-        )
+if not st.session_state.messages:
+    st.markdown('<div class="injoy-chat-section">추천 질문</div>', unsafe_allow_html=True)
+    with st.container(key="chat_suggestions"):
+        for i, question in enumerate(build_chat_suggestions()):
+            st.button(
+                question,
+                key=f"chat_suggestion_{i}",
+                on_click=queue_chat_prompt,
+                args=(question,),
+            )
 st.markdown('<div class="injoy-chat-bottom-space"></div>', unsafe_allow_html=True)
 
 render_chat_composer()

@@ -5,8 +5,10 @@
 import json
 from dotenv import load_dotenv
 from openai import OpenAI
+from utils.openai_env import normalize_openai_env
 
-load_dotenv()
+load_dotenv(override=True)
+normalize_openai_env()
 client = OpenAI()
 
 CLASSIFY_MODEL = "gpt-4o-mini"

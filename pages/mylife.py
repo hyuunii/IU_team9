@@ -3,7 +3,7 @@ import streamlit as st
 
 import common
 
-profile = st.session_state.profile
+profile = common.require_profile()
 
 st.subheader("마이라이프")
 st.caption(f"체류기간 {profile['duration']} 기준 체크리스트 · 스크랩")
