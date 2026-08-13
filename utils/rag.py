@@ -4,8 +4,10 @@ RAG 검색 로직.
 """
 import json
 import numpy as np
+from dotenv import load_dotenv
 from openai import OpenAI
 
+load_dotenv()
 client = OpenAI()
 
 EMBED_MODEL = "text-embedding-3-small"

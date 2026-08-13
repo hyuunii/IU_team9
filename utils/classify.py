@@ -3,8 +3,10 @@
 이 결과는 (1) 부서 라우팅, (2) 답변 전략 분기, (3) 온도계 대시보드용 로그 로 재사용된다.
 """
 import json
+from dotenv import load_dotenv
 from openai import OpenAI
 
+load_dotenv()
 client = OpenAI()
 
 CLASSIFY_MODEL = "gpt-4o-mini"
