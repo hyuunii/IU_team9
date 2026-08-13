@@ -4,3 +4,5 @@ numpy
 pandas
 python-dotenv
 matplotlib
+folium
+streamlit-folium
