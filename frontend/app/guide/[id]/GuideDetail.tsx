@@ -35,5 +35,5 @@ export default function GuideDetail({id}:{id:string}){
   <section className="detail-callout caution"><h2>△ 주의할 점</h2><p>{info.caution}</p></section>
   <section className="detail-callout official"><h2>▤ 공식 정보 확인</h2><p>{info.official}</p></section>
   <section className="related-section"><h2>관련 정보</h2><p>이것도 알아두면 좋아요</p>{related.map(value=><Link href={`/guide/${value.id}`} key={value.id}><span>{value.icon}</span><div><b>{value.title}</b><small>{value.desc}</small></div><i>›</i></Link>)}</section>
- </article><nav className="bottom-nav detail-bottom-nav"><Link href="/home"><span>⌂</span>홈</Link><Link className="active" href="/guide"><span>▤</span>생활가이드</Link><Link href="/ask"><span>?</span>AI에게 질문</Link><Link href="/nearby"><span>⌖</span>내 주변</Link><Link href="/my"><span>♙</span>마이 라이프</Link></nav></main>
+ </article><nav className="bottom-nav detail-bottom-nav"><Link href="/home"><span className="nav-face nav-face-home" aria-hidden="true"/>홈</Link><Link className="active" href="/guide"><span className="nav-face nav-face-guide" aria-hidden="true"/>생활가이드</Link><Link href="/ask"><span className="nav-face nav-face-ask" aria-hidden="true"/>AI에게 질문</Link><Link href="/nearby"><span className="nav-face nav-face-nearby" aria-hidden="true"/>내 주변</Link><Link href="/my"><span className="nav-face nav-face-my" aria-hidden="true"/>마이 라이프</Link></nav></main>
 }
