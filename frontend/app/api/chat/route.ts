@@ -1,5 +1,6 @@
 import faq from "../../../public/faq.json";
 import contacts from "../../../public/institution_contacts.json";
+import faqEmbeddings from "../../../public/faq_embeddings.json";
 
 type Faq = { question:string; answer:string; category:string };
 type Contact = {
@@ -41,6 +42,9 @@ function faqScore(question:string, item:Faq) {
   const haystack = `${item.question} ${item.answer} ${item.category}`.toLowerCase();
   return expandedTokens(question).reduce((score, word) => score + (haystack.includes(word) ? (item.category.includes(word) ? 3 : 1) : 0), 0);
 }
+type EmbeddedFaq={id:string;embedding:number[]};
+function cosine(a:number[],b:number[]){let dot=0,aa=0,bb=0;for(let i=0;i<Math.min(a.length,b.length);i++){dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i]}return aa&&bb?dot/(Math.sqrt(aa)*Math.sqrt(bb)):0}
+async function semanticFaqs(question:string,apiKey?:string){if(!apiKey||!(faqEmbeddings as {items:EmbeddedFaq[]}).items?.length)return [];try{const response=await fetch("https://api.openai.com/v1/embeddings",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${apiKey}`},body:JSON.stringify({model:"text-embedding-3-small",input:question,dimensions:512})});if(!response.ok)return [];const data=await response.json();const vector=data.data?.[0]?.embedding as number[]|undefined;if(!vector)return [];const byId=new Map((faq as (Faq&{id:string})[]).map(item=>[item.id,item]));return (faqEmbeddings as {items:EmbeddedFaq[]}).items.map(row=>({item:byId.get(row.id),score:cosine(vector,row.embedding)})).filter((row):row is {item:Faq;score:number}=>!!row.item&&row.score>=.3).sort((a,b)=>b.score-a.score).slice(0,3)}catch{return []}}
 function compatibleDistricts(region:string) {
   const map:Record<string,string[]> = {
     검단구:["검단구", "서구"], 서해구:["서해구", "서구"],
@@ -107,8 +111,12 @@ export async function POST(request:Request) {
     .map(turn => ({ role:turn.role, content:turn.content }));
   const retrievalQuery = buildRetrievalQuery(question, history);
   const region = profile?.region || "인천";
-  const rankedFaq = (faq as Faq[]).map(item => ({ item, score:faqScore(retrievalQuery, item) })).sort((a,b) => b.score-a.score);
-  const faqContext = rankedFaq.filter(result => result.score >= 2).slice(0,3).map(({item}) => `Q. ${item.question}\nA. ${item.answer}`).join("\n\n");
+  const apiKey = process.env.OPENAI_API_KEY;
+  const semanticFaq=await semanticFaqs(retrievalQuery,apiKey);
+  const keywordFaq = (faq as Faq[]).map(item => ({ item, score:faqScore(retrievalQuery, item) })).sort((a,b) => b.score-a.score);
+  const rankedFaq=semanticFaq.length?semanticFaq:keywordFaq;
+  const faqMatched=semanticFaq.length>0||keywordFaq[0]?.score>=2;
+  const faqContext = rankedFaq.filter(result => semanticFaq.length||result.score >= 2).slice(0,3).map(({item}) => `Q. ${item.question}\nA. ${item.answer}`).join("\n\n");
   const rankedContacts = rankContacts(retrievalQuery, region);
   const recommendation = rankedContacts[0]?.item;
   const contactContext = rankedContacts.slice(0,5).map(({item}) =>
@@ -120,15 +128,15 @@ export async function POST(request:Request) {
     district:recommendation.district, type:recommendation.type,
   } : null;
   const casual = isCasualMessage(question);
-  const hasFaq = rankedFaq[0]?.score >= 2;
+  const hasFaq = faqMatched;
   const fallbackBase = hasFaq ? rankedFaq[0].item.answer : recommendation
     ? "보유한 인천 기관 데이터를 기준으로 문의할 곳을 찾았어요."
     : "현재 준비된 생활가이드에서 정확한 답을 찾지 못했어요.";
   const fallbackContact = recommendation
     ? `\n\n${region} 기준으로 ${recommendation.institution} ${recommendation.department}${recommendation.team ? `(${recommendation.team})` : ""}에 문의해 보세요. 전화번호는 ${recommendation.phone}입니다.`
     : hasFaq ? "" : "\n\n외국인종합안내센터 1345 또는 관련 공식 기관에서 확인해주세요.";
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return Response.json({ answer:await translateAnswer(casual ? casualFallback(question) : fallbackBase + fallbackContact,profile?.locale), source:casual ? "기본 대화" : recommendation ? "FAQ+기관 데이터" : "FAQ", contact:casual ? null : contact });
+  const retrievalSource=semanticFaq.length?"임베딩 RAG":"키워드 폴백";
+  if (!apiKey) return Response.json({ answer:await translateAnswer(casual ? casualFallback(question) : fallbackBase + fallbackContact,profile?.locale), source:casual ? "기본 대화" : `${retrievalSource}${recommendation?"+기관 데이터":""}`, contact:casual ? null : contact });
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method:"POST",
@@ -163,7 +171,7 @@ ${contactContext || "관련 기관 후보 없음"}` },
       { role:"user", content:question }
     ]})
   });
-  if (!response.ok) return Response.json({ answer:await translateAnswer(casual ? casualFallback(question) : fallbackBase + fallbackContact,profile?.locale), source:casual ? "기본 대화" : recommendation ? "FAQ+기관 데이터" : "FAQ", contact:casual ? null : contact });
+  if (!response.ok) return Response.json({ answer:await translateAnswer(casual ? casualFallback(question) : fallbackBase + fallbackContact,profile?.locale), source:casual ? "기본 대화" : `${retrievalSource}${recommendation?"+기관 데이터":""}`, contact:casual ? null : contact });
   const data = await response.json();
-  return Response.json({ answer:data.choices?.[0]?.message?.content || fallbackBase + fallbackContact, source:"AI+FAQ+기관 데이터", contact });
+  return Response.json({ answer:data.choices?.[0]?.message?.content || fallbackBase + fallbackContact, source:`AI+${retrievalSource}${recommendation?"+기관 데이터":""}`, contact });
 }

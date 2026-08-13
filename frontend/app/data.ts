@@ -1,6 +1,6 @@
 export type GuideItem = { id:string; icon:string; title:string; desc:string; category:string; badge:"생활 팁"|"공식 정보" };
 export const guideItems:GuideItem[] = [
-  {id:"transit-card",icon:"🚌",title:"대중교통 카드는 어디서 충전하나요?",desc:"편의점이나 지하철역에서 티머니 카드를 충전할 수 있고, 모바일 앱으로도 충전할 수 있어요.",category:"교통",badge:"생활 팁"},
+  {id:"transit-card",icon:"🚌",title:"인천 i-패스 지원 대상과 환급 조건",desc:"인천시민이라면 K-패스 카드 등록과 주소지 검증 후 대중교통비 환급 혜택을 받을 수 있어요.",category:"교통",badge:"공식 정보"},
   {id:"bus-booking",icon:"🎫",title:"터미널 가기 전에 미리 예매하기",desc:"시외·고속버스는 고속버스티머니와 버스타고 앱으로 미리 예매할 수 있어요.",category:"교통",badge:"생활 팁"},
   {id:"phone",icon:"📱",title:"외국인도 휴대폰 개통이 가능한가요?",desc:"외국인등록증이 있으면 대리점에서 개통할 수 있고, 발급 전에는 선불 유심을 이용할 수 있어요.",category:"통신",badge:"공식 정보"},
   {id:"bank",icon:"💳",title:"외국인도 은행 계좌를 만들 수 있나요?",desc:"외국인등록증과 여권이 필요하며 은행에 따라 재직증명서 등 추가서류를 요청할 수 있어요.",category:"은행·금융",badge:"공식 정보"},
