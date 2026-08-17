@@ -48,6 +48,8 @@ export default defineConfig(async () => {
       // Bind to the local network as well as localhost so phones on the same
       // Wi-Fi can open the Network URL printed by the dev server.
       host: "0.0.0.0",
+      // Allow the stable ngrok dev domain used by the presentation QR code.
+      allowedHosts: ["rising-legible-proved.ngrok-free.dev"],
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),
